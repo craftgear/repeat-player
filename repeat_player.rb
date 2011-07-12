@@ -1,14 +1,23 @@
 #coding: utf-8
-require "colored"
+begin
+  require "colored"
+rescue LoadError
+end
 
 #設定
 @ini_file = "repeat_player.ini"
-@default_speeds = [1.8, 1.2, 1.4]
-#default_speeds = [2.0, 1.6, 1.2]
-#default_speeds = [1.7, 1.4, 1.2, 1.0]
+#@default_speeds = [1.8, 1.2, 1.4]
+@default_speeds = [2.0, 1.6, 1.2]
 file_types = "mp4,avi,mpg,mkv,mp3,flac,m4a"
 @partial_repeat = false
 @partial_duration = 610
+
+# TODO Cut head and tail
+#head_trim=0
+#tail_trim=0
+
+# TODO audio file output
+# -ao pcm:file=audio.wav
 
 def load_ini
   last_file = nil
@@ -42,7 +51,7 @@ end
 
 def save_ini(file_name, speed, position, speeds)
   File.open(@ini_file, "w") do |f|
-    f.puts "last_file=" + file_name.force_encoding('UTF-8')
+    f.puts "last_file=" + File::basename(file_name).force_encoding('UTF-8')
     f.puts "last_speed=" + speed.to_s
     f.puts "last_position=" + position.to_i.to_s
     f.puts "speeds=" + speeds.join(",") if speeds != @default_speeds
@@ -77,9 +86,13 @@ end
 files.sort!
 
 last_file, last_speed, last_position, last_speeds = load_ini
-if files.index(last_file) == nil
-  last_file = nil
+
+last_file_in_list = false
+files.each do |f|
+  last_file_in_list = true if f =~ /#{Regexp.escape(last_file)}/
 end
+last_file = nil unless last_file_in_list
+
 if last_speeds != nil && last_speeds != @default_speeds
   speeds = last_speeds
 else
@@ -87,9 +100,9 @@ else
 end
 
 files.each do |f|
-  if last_file != nil && last_file != f
+  if last_file != nil && last_file != File::basename(f)
     next
-  elsif last_file == f
+  elsif last_file == File::basename(f)
     last_file = nil
   end
 
@@ -100,10 +113,6 @@ files.each do |f|
       hoge, duration = line.split("=")
       duration = duration.to_i
     end
-  end
-  if last_position.to_i + 5 > duration
-    last_position = nil
-    next
   end
 
   if @partial_repeat
@@ -125,7 +134,6 @@ files.each do |f|
     end
 
     speeds.each do |s|
-      s = s.to_f
       if last_position == nil && @partial_repeat
         last_position = part * @partial_duration
         start_pos = format_startpos(part * @partial_duration)
@@ -144,13 +152,13 @@ files.each do |f|
 
       begin
         start_time = Time.now.to_i
-        result = `mplayer -nolirc -osdlevel 3 -vo x11 -af scaletempo,volnorm #{start_pos} #{end_pos} -speed #{s} -msglevel all=0 \"#{f}\"`
-
+        result = `mplayer -really-quiet -framedrop -double -dr -nolirc -osdlevel 3 -vo x11 -af scaletempo,volnorm #{start_pos} #{end_pos} -speed #{s} -msglevel all=0 \"#{f}\"`
       ensure
         end_time = Time.now.to_i
         play_seconds = (end_time - start_time) * s + last_position.to_i
         if @partial_repeat
-          if (end_time - start_time) * s + 5 < @partial_duration - (last_position % @partial_duration)
+          remain_seconds = [@partial_duration - (last_position % @partial_duration), duration - last_position].min
+          if (end_time - start_time + 2) * s < remain_seconds
             save_ini f, s, play_seconds, speeds
             exit
           end
