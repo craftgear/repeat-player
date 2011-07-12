@@ -25,7 +25,6 @@ def load_ini
           @partial_repeat = line.sub("partial_repeat=", "").strip if line =~ /^partial_repeat=/
           @partial_repeat = @partial_repeat == 'true' ? true : false
           @partial_duration = line.sub("partial_duration=", "").strip.to_i if line =~ /^partial_duration=/
-          puts @partial_repeat, @partial_duration
         end
       end
   end
