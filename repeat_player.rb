@@ -11,6 +11,7 @@ end
 file_types = "mp4,avi,mpg,mkv,mp3,flac,m4a"
 @partial_repeat = false
 @partial_duration = 610
+@loop = false
 
 # TODO Cut head and tail
 #head_trim=0
@@ -89,7 +90,7 @@ last_file, last_speed, last_position, last_speeds = load_ini
 
 last_file_in_list = false
 files.each do |f|
-  last_file_in_list = true if f =~ /#{Regexp.escape(last_file)}/
+  last_file_in_list = true if last_file && f =~ /#{Regexp.escape(last_file)}/
 end
 last_file = nil unless last_file_in_list
 
@@ -99,84 +100,86 @@ else
   speeds = @default_speeds
 end
 
-files.each do |f|
-  if last_file != nil && last_file != File::basename(f)
-    next
-  elsif last_file == File::basename(f)
-    last_file = nil
-  end
-
-  media_info = `mplayer -vo null -ao null -frames 0 -identify \"#{f}\"`
-  duration = 0
-  media_info.each_line do |line|
-    if line =~ /ID_LENGTH/
-      hoge, duration = line.split("=")
-      duration = duration.to_i
-    end
-  end
-
-  if @partial_repeat
-    parts = duration.div(@partial_duration) + 1
-  else
-    parts = 1
-  end
-
-  parts.times do |part|
-    start_pos = ''
-    end_pos = ''
-
-    if last_position != nil
-      if @partial_repeat
-        next if last_position.div(@partial_duration).to_i != part
-        end_pos = format_endpos(@partial_duration - (last_position % @partial_duration))
-      end
-      start_pos = format_startpos(last_position)
+begin
+  files.each do |f|
+    if last_file != nil && last_file != File::basename(f)
+      next
+    elsif last_file == File::basename(f)
+      last_file = nil
     end
 
-    speeds.each do |s|
-      if last_position == nil && @partial_repeat
-        last_position = part * @partial_duration
-        start_pos = format_startpos(part * @partial_duration)
-        end_pos = format_endpos(@partial_duration)
+    media_info = `mplayer -vo null -ao null -frames 0 -identify \"#{f}\"`
+    duration = 0
+    media_info.each_line do |line|
+      if line =~ /ID_LENGTH/
+        hoge, duration = line.split("=")
+        duration = duration.to_i
       end
+    end
 
-      if speeds.index(last_speed) != nil && s != last_speed
-        next
-      elsif last_speed == s
-        last_speed = nil
-      end
+    if @partial_repeat
+      parts = duration.div(@partial_duration) + 1
+    else
+      parts = 1
+    end
 
-      puts ">>> start playing #{f}".green
-      puts ">>> part #{part+1} of #{parts}".green if parts > 1
-      puts ">>> with speed #{s}".green
+    parts.times do |part|
+      start_pos = ''
+      end_pos = ''
 
-      begin
-        start_time = Time.now.to_i
-        result = `mplayer -really-quiet -framedrop -double -dr -nolirc -osdlevel 3 -vo x11 -af scaletempo,volnorm #{start_pos} #{end_pos} -speed #{s} -msglevel all=0 \"#{f}\"`
-      ensure
-        end_time = Time.now.to_i
-        play_seconds = (end_time - start_time) * s + last_position.to_i
+      if last_position != nil
         if @partial_repeat
-          remain_seconds = [@partial_duration - (last_position % @partial_duration), duration - last_position].min
-          if (end_time - start_time + 2) * s < remain_seconds
+          next if last_position.div(@partial_duration).to_i != part
+          end_pos = format_endpos(@partial_duration - (last_position % @partial_duration))
+        end
+        start_pos = format_startpos(last_position)
+      end
+
+      speeds.each do |s|
+        if last_position == nil && @partial_repeat
+          last_position = part * @partial_duration
+          start_pos = format_startpos(part * @partial_duration)
+          end_pos = format_endpos(@partial_duration)
+        end
+
+        if speeds.index(last_speed) != nil && s != last_speed
+          next
+        elsif last_speed == s
+          last_speed = nil
+        end
+
+        puts ">>> start playing #{f}".green
+        puts ">>> part #{part+1} of #{parts}".green if parts > 1
+        puts ">>> with speed #{s}".green
+
+        begin
+          start_time = Time.now.to_i
+          result = `mplayer -really-quiet -framedrop -double -dr -nolirc -osdlevel 3 -vo x11 -af scaletempo,volnorm #{start_pos} #{end_pos} -speed #{s} -msglevel all=0 \"#{f}\"`
+        ensure
+          end_time = Time.now.to_i
+          play_seconds = (end_time - start_time) * s + last_position.to_i
+          if @partial_repeat
+            remain_seconds = [@partial_duration - (last_position % @partial_duration), duration - last_position].min
+            if (end_time - start_time + 5) * s < remain_seconds
+              save_ini f, s, play_seconds, speeds
+              exit
+            end
+          elsif play_seconds + 5 < duration
             save_ini f, s, play_seconds, speeds
             exit
+          else
+            start_pos = ''
           end
-        elsif play_seconds + 5 < duration
-          save_ini f, s, play_seconds, speeds
-          exit
-        else
-          start_pos = ''
+          puts ">>> duration     " + duration.to_s
+          puts ">>> play seconds " + play_seconds.to_s
         end
-        puts ">>> duration     " + duration.to_s
-        puts ">>> play seconds " + play_seconds.to_s
+
+        last_position = nil
       end
 
-      last_position = nil
     end
-
   end
-end
+end while @loop
 File.delete @ini_file
 `beep`
 `beep`
