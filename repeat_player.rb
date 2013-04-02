@@ -1,17 +1,24 @@
 #coding: utf-8
-begin
-  require "colored"
-rescue LoadError
-end
+require "rubygems"
+require "colored"
+require "optparse"
 
 #設定
 @ini_file = "repeat_player.ini"
-#@default_speeds = [1.8, 1.2, 1.4]
-@default_speeds = [2.0, 1.6, 1.2]
-file_types = "mp4,avi,mpg,mkv,mp3,flac,m4a"
+@default_speeds = [1.6, 1.4, 1.2]
+#@default_speeds = (12..20).to_a.reverse.map{|i|
+   #i / 10.0;
+#}
+#@default_speeds = @default_speeds + (13..20).to_a.map{|i|
+   #i / 10.0;
+#}
+
+file_types = "mp4,avi,mpg,mkv,mp3,flac,m4a,ogg"
 @partial_repeat = false
 @partial_duration = 610
-@loop = false
+@loop = true
+@rewind_margin = 5
+@full_screen = false
 
 # TODO Cut head and tail
 #head_trim=0
@@ -51,24 +58,25 @@ def load_ini
 end
 
 def save_ini(file_name, speed, position, speeds)
+  position = position.to_i - 2 * speed.to_f
   File.open(@ini_file, "w") do |f|
-    f.puts "last_file=" + File::basename(file_name).force_encoding('UTF-8')
+    f.puts "last_file=" + File::basename(file_name)
     f.puts "last_speed=" + speed.to_s
-    f.puts "last_position=" + position.to_i.to_s
-    f.puts "speeds=" + speeds.join(",") if speeds != @default_speeds
+    f.puts "last_position=" + position.to_s
+    f.puts "speeds=" + speeds.join(",") #if speeds != @default_speeds
     f.puts "partial_repeat="+@partial_repeat.to_s
     f.puts "partial_duration="+@partial_duration.to_s
   end
 end
 
-@rewind_margin = 3
 def format_startpos(seconds)
   seconds = seconds - @rewind_margin
   seconds = 0 if seconds < 0
   hh = seconds.div(3600)
   mm = seconds.div(60) - (hh*60)
   ss = seconds % 60
-  return '-ss '+hh.to_s+':'+mm.to_s+':'+ss.to_s
+  pos = '-ss '+hh.to_s+':'+mm.to_s+':'+ss.to_s
+  return pos
 end
 
 def format_endpos(seconds)
@@ -110,6 +118,8 @@ begin
 
     media_info = `mplayer -vo null -ao null -frames 0 -identify \"#{f}\"`
     duration = 0
+    puts media_info
+    #todo store audio tracks and subtitle tracks
     media_info.each_line do |line|
       if line =~ /ID_LENGTH/
         hoge, duration = line.split("=")
@@ -152,26 +162,33 @@ begin
         puts ">>> part #{part+1} of #{parts}".green if parts > 1
         puts ">>> with speed #{s}".green
 
+        #equalizer_setting = ",equalizer=2:3:4:4:4:3:3:2:1:1";
+        equalizer_setting = "";
+        osdlevel = 3;
+        full_screen = @full_screen ? '-fs' : ''
         begin
           start_time = Time.now.to_i
-          result = `mplayer -really-quiet -framedrop -double -dr -nolirc -osdlevel 3 -vo x11 -af scaletempo,volnorm #{start_pos} #{end_pos} -speed #{s} -msglevel all=0 \"#{f}\"`
+          lang = "-alang eng" # -slang eng"
+          result = `/usr/bin/mplayer -zoom #{full_screen} -geometry 0%:99% -really-quiet -framedrop -double -dr -nolirc -osdlevel #{osdlevel} -vo x11 -vf eq2=1.5:1.0:0.0:1.0 -af scaletempo,volnorm#{equalizer_setting} #{start_pos} #{end_pos} -speed #{s} -msglevel all=0 #{lang} \"#{f}\"`
         ensure
           end_time = Time.now.to_i
-          play_seconds = (end_time - start_time) * s + last_position.to_i
+          position = (end_time - start_time + 3) * s + last_position.to_i
           if @partial_repeat
-            remain_seconds = [@partial_duration - (last_position % @partial_duration), duration - last_position].min
-            if (end_time - start_time + 5) * s < remain_seconds
-              save_ini f, s, play_seconds, speeds
-              exit
+            remain_seconds = @partial_duration
+            if last_position
+              remain_seconds = [@partial_duration - (last_position % @partial_duration), duration - last_position].min
             end
-          elsif play_seconds + 5 < duration
-            save_ini f, s, play_seconds, speeds
-            exit
+            if (end_time - start_time + 1) * s < remain_seconds
+              save_ini f, s, position, speeds
+            end
+          elsif position < duration
+            save_ini f, s, position, speeds
           else
+            save_ini f, s, position, speeds
             start_pos = ''
           end
           puts ">>> duration     " + duration.to_s
-          puts ">>> play seconds " + play_seconds.to_s
+          puts ">>> play seconds " + position.to_s
         end
 
         last_position = nil
@@ -180,6 +197,7 @@ begin
     end
   end
 end while @loop
-File.delete @ini_file
+#File.delete @ini_file
+save_ini '', s, position, speeds
 `beep`
 `beep`
