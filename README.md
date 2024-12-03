@@ -7,7 +7,7 @@ brew install mpv
 
 2. run
 ```
-node repeat_player.mjs <VIDEO_FILE_DIRECTORY>
+node repeat_player.mjs <VIDEO_FILE_DIRECTORY1> <VIDEO_FILE_DIRECTORY2> ...
 ```
 
 ## Change Speed

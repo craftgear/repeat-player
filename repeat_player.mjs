@@ -4,13 +4,15 @@ import { spawn } from 'child_process';
 import path from 'node:path';
 
 const DEFAULT_SPEED = '1.95';
+const DEFAULT_VOLUME = '70';
 const MAX_WIDTH = '640'
 const POSITION_TOP = '0%';
 const POSITION_LEFT = '100%'
+const EXTENSIONS = ['mp4', 'mkv', 'avi', 'webm']
 
 const play = (fileName, speed) => {
-  console.info(`playing ${fileName}`)
-  return spawn('mpv', ['--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, fileName])
+  console.info(`playing ${path.basename(fileName)} at x${speed}`)
+  return spawn('mpv', ['--no-focus-on-open', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, fileName])
 }
 
 const lastFileExistsInPlayList = (lastFileName, playList) => {
@@ -82,9 +84,10 @@ const loadConfig = () => {
 }
 
 const main = async () => {
-  const targetDir = process.argv[2];
-  const playList = await fs.globSync(`${targetDir}/**/*`)
-    .filter(x => ['mp4', 'mkv', 'avi'].some(ext => x.endsWith(ext)))
+  const targetDirs = process.argv.slice(2);
+  const playList = targetDirs.filter(dir => fs.existsSync(dir))
+    .flatMap((dir) => fs.globSync(`${dir}/**/*`))
+    .filter(x => EXTENSIONS.some(ext => x.endsWith(ext)))
   playList.sort()
   const conf = loadConfig()
   const lastFileName = lastFileExistsInPlayList(conf.lastFileName, playList)
