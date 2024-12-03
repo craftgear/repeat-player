@@ -1,11 +1,23 @@
-メディアファイルのあるディレクトリにスクリプトを置くか､シンボリックリンクを作って実行してください｡
+# How to use
 
-引数なしでカレントディレクトリ以下の全てのファイルを､引数にディレクトリを与えるとそのディレクトリ以下の全てのファイルを再生します｡
+1. install mpv
+```
+brew install mpv
+```
 
-同じファイルを再生速度を変えながら再生します｡
-再生速度の指定はファイル先頭の配列でおこなってください｡
+2. run
+```
+node repeat_player.mjs <VIDEO_FILE_DIRECTORY>
+```
 
-一つのファイルをいくつかの部分に分けて､各部分ごとに再生速度を変えながら再生することもできます｡
-ファイル先頭の@partial_repeatをtrueにして､@partial_durationに区切る時間を秒で設定してください｡
+## Change Speed
 
-一度でも再生したディレクトリの下にはrepeat_player.iniというファイルができるので､iniファイルでディレクトリごとに再生速度､部分再生､部分再生の時間を指定できます｡
+- speed up `]`
+- speed down `[`
+
+other key config is also found at ![mpv document](https://mpv.io/manual/stable/)
+
+
+## Change window position and size
+
+modify `MAX_WIDTH`, `POSITION_TOP`, `POSITION_LEFT` respectively.
