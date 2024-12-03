@@ -12,7 +12,7 @@ const EXTENSIONS = ['mp4', 'mkv', 'avi', 'webm']
 
 const play = (fileName, speed) => {
   console.info(`playing ${path.basename(fileName)} at x${speed}`)
-  return spawn('mpv', ['--no-focus-on-open', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, fileName])
+  return spawn('mpv', ['--focus-on=never', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, fileName])
 }
 
 const lastFileExistsInPlayList = (lastFileName, playList) => {
