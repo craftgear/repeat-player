@@ -50,6 +50,9 @@ const repeat = (lastFileName, playList, speed) => {
     if (data.includes('End of file')) {
       const nextFileName = findNextFileName(lastFileName, playList)
       repeat(nextFileName, playList, tempSpeed)
+      process.removeAllListeners('SIGINT');
+      process.removeAllListeners('SIGTERM');
+      process.removeAllListeners('SIGQUIT');
     }
   })
 
@@ -60,7 +63,12 @@ const repeat = (lastFileName, playList, speed) => {
   // exit by Cmd+c
   process.on('SIGINT', () => {
     saveConfig(lastFileName, tempSpeed)
-    process.exit()
+  })
+  process.on('SIGTERM', () => {
+    saveConfig(lastFileName, tempSpeed)
+  })
+  process.on('SIGQUIT', () => {
+    saveConfig(lastFileName, tempSpeed)
   })
 
 }
