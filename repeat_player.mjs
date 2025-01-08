@@ -12,7 +12,7 @@ const EXTENSIONS = ['mp4', 'mkv', 'avi', 'webm']
 
 const play = (fileName, speed) => {
   console.info(`playing ${path.basename(fileName)} at x${speed}`)
-  return spawn('mpv', ['--focus-on=never', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, fileName])
+  return spawn('mpv', ['--focus-on=never', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, '--af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]', fileName])
 }
 
 const lastFileExistsInPlayList = (lastFileName, playList) => {
@@ -47,7 +47,7 @@ const repeat = (lastFileName, playList, speed) => {
     if (data.includes(' x')) {
       tempSpeed = String(data).split(' x').at(1).slice(0, 4);
     }
-    if (data.includes('End of file')) {
+    if (data.includes('End of file') || data.includes('Some errors happened')) {
       const nextFileName = findNextFileName(lastFileName, playList)
       repeat(nextFileName, playList, tempSpeed)
       process.removeAllListeners('SIGINT');
