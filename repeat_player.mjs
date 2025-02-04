@@ -8,7 +8,7 @@ const DEFAULT_VOLUME = '70';
 const MAX_WIDTH = '640'
 const POSITION_TOP = '0%';
 const POSITION_LEFT = '100%'
-const EXTENSIONS = ['mp4', 'mkv', 'avi', 'webm']
+const EXTENSIONS = ['mp4', 'mkv', 'avi', 'webm', 'mp3', 'm4b']
 
 const play = (fileName, speed) => {
   console.info(`playing ${path.basename(fileName)} at x${speed}`)
@@ -41,6 +41,7 @@ const findNextFileName = (currentFileName, playList) => {
 
 const repeat = (lastFileName, playList, speed) => {
   const p = play(lastFileName, speed);
+  saveConfig(lastFileName, speed);
 
   let tempSpeed = speed;
   p.stdout.on('data', (data) => {
