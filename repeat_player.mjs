@@ -12,7 +12,7 @@ const EXTENSIONS = ['mp4', 'mkv', 'avi', 'webm', 'mp3', 'm4b']
 
 const play = (fileName, speed) => {
   console.info(`playing ${path.basename(fileName)} at x${speed}`)
-  return spawn('mpv', ['--focus-on=never', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, '--af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]', fileName])
+  return spawn('mpv', ['--alang=en,eng', '--focus-on=never', '--save-position-on-quit', `--speed=${speed}`, `--geometry=${MAX_WIDTH}+${POSITION_LEFT}+${POSITION_TOP}`, `--volume=${DEFAULT_VOLUME}`, '--af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]', fileName])
 }
 
 const lastFileExistsInPlayList = (lastFileName, playList) => {
@@ -40,6 +40,7 @@ const findNextFileName = (currentFileName, playList) => {
 
 
 const repeat = (lastFileName, playList, speed) => {
+  console.log('repeat ----- lastFileName', lastFileName)
   const p = play(lastFileName, speed);
   saveConfig(lastFileName, speed);
 
@@ -51,25 +52,12 @@ const repeat = (lastFileName, playList, speed) => {
     if (data.includes('End of file') || data.includes('Some errors happened')) {
       const nextFileName = findNextFileName(lastFileName, playList)
       repeat(nextFileName, playList, tempSpeed)
-      process.removeAllListeners('SIGINT');
-      process.removeAllListeners('SIGTERM');
-      process.removeAllListeners('SIGQUIT');
     }
   })
 
   p.on('exit', () => {
-    saveConfig(lastFileName, tempSpeed);
-  })
-
-  // exit by Cmd+c
-  process.on('SIGINT', () => {
-    saveConfig(lastFileName, tempSpeed)
-  })
-  process.on('SIGTERM', () => {
-    saveConfig(lastFileName, tempSpeed)
-  })
-  process.on('SIGQUIT', () => {
-    saveConfig(lastFileName, tempSpeed)
+    console.log('----- lastFileName, tempSpeed', lastFileName, tempSpeed)
+    console.log('exit')
   })
 
 }
